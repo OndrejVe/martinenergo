@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "sam:build",  "type":"shell","command":"sam build --use-container -t infra/template.yaml" },
+    { "label": "sam:local",  "type":"shell","command":"sam local start-api" },
+    { "label": "sam:deploy", "type":"shell","command":"sam deploy --guided" },
+    { "label": "rag:build",  "type":"shell","command":"python rag/build_index.py --src rag/docs --out rag/out" }
+  ]
+}

@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# Předpokládané složky pro přesunutí souborů
+SOURCE_DIR="/Users/LUSK/Downloads/OneDrive_2025-11-07"
+TARGET_DIR="/Volumes/KINGSTON/Dev/Energo-source"
+
+# Vytvoření struktury složek, pokud neexistují
+mkdir -p "$TARGET_DIR/data"
+mkdir -p "$TARGET_DIR/docs"
+
+# Funkce pro přesun souborů
+move_files() {
+    local file=$1
+    local target_dir=$2
+    mv "$file" "$target_dir"
+    echo "Moved $file to $target_dir"
+}
+
+# Příklad: Přesun .xlsx, .docx, .pdf souborů do příslušných složek
+move_files "$SOURCE_DIR/tddskutecne_2024_15min.xlsx" "$TARGET_DIR/data/"
+move_files "$SOURCE_DIR/Výpočet uspory.docx" "$TARGET_DIR/docs/"
+move_files "$SOURCE_DIR/Vyúčtování za Elektrínu.pdf" "$TARGET_DIR/docs/"
+
+# Přidat další soubory podle potřeby
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "== Přesun znalostí: OneDrive -> KINGSTON =="
+
+# --- 1) Najdi nejnovější složku OneDrive_* v ~/Downloads (řeší mezery a (1))
+SRC_CANDIDATE=$(ls -d "$HOME"/Downloads/OneDrive_* 2>/dev/null | sort | tail -n1 || true)
+if [[ -n "${SRC_CANDIDATE:-}" && -d "$SRC_CANDIDATE" ]]; then
+  SRC="$SRC_CANDIDATE"
+else
+  # Fallback – uprav dle potřeby, pokud se autodetekce netrefí
+  SRC="$HOME/Downloads/OneDrive_2025-11-07 (1)"
+fi
+echo "Zdroj: $SRC"
+if [[ ! -d "$SRC" ]]; then
+  echo "❌ Zdrojová složka neexistuje: $SRC" >&2
+  exit 1
+fi
+
+# --- 2) Cíl na SSD KINGSTON – podle tvé struktury 'Projekty/Energo-source'
+VOL="/Volumes/KINGSTON"
+PROJ_ROOT="$VOL/Projekty/Energo-source"
+
+# Vytvoř cílovou stromovou strukturu (bezpečně, opakovatelně)
+mkdir -p "$PROJ_ROOT"/{product/resources,product/website,pricing-policy,playbooks,faq,legal,cases,admin/finance,data/consumption/raw,data/examples,docs}
+
+# Helper: DOCX -> MD (pandoc, jinak textutil, jinak jen zkopíruj)
+doc2md() {
+  local in="$1"
+  local out="$2"
+  if command -v pandoc >/dev/null 2>&1; then
+    pandoc "$in" -t gfm -o "$out"
+  elif command -v textutil >/dev/null 2>&1; then
+    textutil -convert txt -stdout "$in" | sed -e 's/\r$//' > "$out"
+  else
+    # Bez konverze – prostě ulož DOCX vedle s .docx
+    cp "$in" "$out.docx"
+  fi
+  echo "→ Konverze: $(basename "$in") -> ${out##$PROJ_ROOT/}"
+}
+
+# Helper: přesuň první soubor podle patternu (case-insensitive find)
+mv_first_match() {
+  local pattern="$1"
+  local dest_dir="$2"
+  local found
+  found=$(find "$SRC" -maxdepth 1 -iname "$pattern" -print -quit 2>/dev/null || true)
+  if [[ -n "$found" ]]; then
+    mv "$found" "$dest_dir/"
+    echo "→ $(basename "$found") -> ${dest_dir##$PROJ_ROOT/}/"
+  fi
+}
+
+# --- 3) Konkrétní mapování souborů -> složky
+# 15min odběr (xlsx) -> data/consumption/raw/
+find "$SRC" -maxdepth 1 -iregex '.*15min.*\.xlsx$' -exec mv {} "$PROJ_ROOT/data/consumption/raw/" \; -print 2>/dev/null | sed 's/^/→ /' || true
+
+# D_sazba_TDD vazby (xlsx) -> data/tariffs/
+mkdir -p "$PROJ_ROOT/data/tariffs"
+find "$SRC" -maxdepth 1 -iname 'D_sazba_TDD*.*xls*' -exec mv {} "$PROJ_ROOT/data/tariffs/" \; -print 2>/dev/null | sed 's/^/→ /' || true
+
+# Vyúčtování za Elektřinu (pdf) -> admin/finance/
+find "$SRC" -maxdepth 1 -iregex '.*vy[uú]čtov[aá]n[ií].*elektr[ií]n.*\.pdf$' -exec mv {} "$PROJ_ROOT/admin/finance/" \; -print 2>/dev/null | sed 's/^/→ /' || true
+
+# Krátké představení... (docx) -> playbooks/kratke-predstaveni.md (konverze)
+kp_doc=$(find "$SRC" -maxdepth 1 \( -iname 'krátké představení*.docx' -o -iname 'kratke predstaven*.docx' \) -print -quit 2>/dev/null || true)
+if [[ -n "${kp_doc:-}" ]]; then
+  doc2md "$kp_doc" "$PROJ_ROOT/playbooks/kratke-predstaveni.md"
+fi
+
+# Odkazy.docx -> product/resources/odkazy.md (konverze)
+odk_doc=$(find "$SRC" -maxdepth 1 -iname 'odkazy.docx' -print -quit 2>/dev/null || true)
+if [[ -n "${odk_doc:-}" ]]; then
+  doc2md "$odk_doc" "$PROJ_ROOT/product/resources/odkazy.md"
+fi
+
+# Výpočet úspory.docx -> pricing-policy/vypocet-uspor.md (konverze)
+vus_doc=$(find "$SRC" -maxdepth 1 \( -iname 'výpočet*uspory*.docx' -o -iname 'vypocet*uspory*.docx' \) -print -quit 2>/dev/null || true)
+if [[ -n "${vus_doc:-}" ]]; then
+  doc2md "$vus_doc" "$PROJ_ROOT/pricing-policy/vypocet-uspor.md"
+fi
+
+# priklad.xlsx -> data/examples/
+find "$SRC" -maxdepth 1 -iname 'priklad*.xlsx' -exec mv {} "$PROJ_ROOT/data/examples/" \; -print 2>/dev/null | sed 's/^/→ /' || true
+
+# ATT0002.html a další doplňky -> product/resources/
+find "$SRC" -maxdepth 1 -iname 'ATT*.html' -exec mv {} "$PROJ_ROOT/product/resources/" \; -print 2>/dev/null | sed 's/^/→ /' || true
+
+echo
+echo "== Výpis cílové struktury =="
+find "$PROJ_ROOT" -maxdepth 3 -type f | sed "s|$PROJ_ROOT/|• |"
+
+echo
+echo "✅ Hotovo. Pokud něco chybí, uprav patterny nahoře (case-insensitive find)."

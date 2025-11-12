@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Energo RAG backend (Python)
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 20
+    MemorySize: 1024
+    Architectures: [arm64]
+    Environment:
+      Variables:
+        RAG_PREFIX: "index/"
+        EMBEDDINGS_MODEL: "text-embedding-3-small"
+        CHAT_MODEL: "gpt-4o-mini"
+        TOP_K: "5"
+
+Parameters:
+  RagBucketName:
+    Type: String
+    Description: S3 bucket for RAG index
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+    Description: Dev key (pro rychlý start)
+
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: v1
+      Cors: "'*'"
+
+  ChatFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../api
+      Handler: chat_handler.lambda_handler
+      Policies:
+        - S3ReadPolicy: { BucketName: !Ref RagBucketName }
+      Environment:
+        Variables:
+          RAG_BUCKET: !Ref RagBucketName
+          OPENAI_API_KEY: !Ref OpenAIApiKey
+      Events:
+        Chat:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /chat
+            Method: POST
+
+  IngestFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../api
+      Handler: ingest_handler.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          RAG_BUCKET: !Ref RagBucketName
+          RAG_PREFIX: "index/"
+      Events:
+        Ping:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /ingest
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1"
