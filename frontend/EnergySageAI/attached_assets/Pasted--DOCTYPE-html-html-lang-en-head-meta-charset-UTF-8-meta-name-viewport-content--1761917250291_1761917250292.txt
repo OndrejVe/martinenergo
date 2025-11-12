@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>HeyGen Streaming Avatar with Chat</title>
+  <link rel="icon" href="data:,"><!-- prevent favicon 404 -->
+  <style>
+    #videoContainer { width:640px; height:auto; margin:20px auto; }
+    #mediaElement { width:100%; height:auto; background:#000; border-radius:8px }
+    #chatBox { width:640px; margin:20px auto; }
+    #userInput { width:500px; padding:10px; }
+    button { padding:10px 15px; cursor:pointer; }
+    #chatLog, #status {
+      height:200px; overflow-y:auto; border:1px solid #ccc; padding:10px; margin-bottom:10px; border-radius:8px;
+      font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .chat-li { margin-bottom:10px; padding:6px 0; border-bottom:1px solid #eee; }
+    .dim { color:#666 }
+  </style>
+</head>
+<body>
+  <div id="videoContainer">
+    <video id="mediaElement" autoplay playsinline muted></video>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="chatBox">
+    <div id="chatLog"></div>
+    <input type="text" id="userInput" placeholder="Type your message here..." />
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <script>
+    // ====== CONFIG ======
+    const API_CONFIG = {
+      serverUrl: "https://api.heygen.com",
+      token: "HEYGEN_API_KEY_GOES_HERE", // ⚠️ v produkci posílat přes backend/proxy!
+      avatarId: "Pedro_ProfessionalLook_public",
+      voiceId: "fc3a1b6d218246d39ff5199ab147d6ee"
+    };
+
+    // tvoje chat API (streaming text)
+    const API_URL = "https://miranda.bruijn.cz/chat_msg_async";
+    const jwt_token_const = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhY2NvdW50X3NvdXJjZSI6ImNtZTAwMSIsImFjY291bnRfbmFtZSI6Im1hZGRvY3RvciIsImlhdCI6MTc0NTA2NzQ0MiwibmJmIjoxNzQ1MDY3NDQyfQ.oW6iWOJuLw4mLaSfCELSOY9n0GHOIZ4KMkVYE78AXqY";
+
+    // ====== STATE ======
+    let sessionInfo = null;
+    let pc = null;
+    const mediaElement = document.getElementById("mediaElement");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const chatLog = document.getElementById("chatLog");
+    const statusEl = document.getElementById("status");
+    const chatId_const = makeId(10);
+    let reconnectTimer = null;
+
+    function status(msg) {
+      const t = new Date().toLocaleTimeString();
+      statusEl.innerHTML += `<div><span class="dim">${t}</span> — ${msg}</div>`;
+      statusEl.scrollTop = statusEl.scrollHeight;
+    }
+
+    function makeId(len) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let out = ""; for (let i=0;i<len;i++) out += chars[Math.floor(Math.random()*chars.length)];
+      return out;
+    }
+
+    // ====== SESSION ======
+    async function createNewSession() {
+      status("Creating new session…");
+      try {
+        sessionInfo = await newSession("medium", API_CONFIG.avatarId, API_CONFIG.voiceId);
+        console.log("Session info:", sessionInfo);
+
+        const iceRaw = sessionInfo.ice_servers || sessionInfo.ice_servers2 || [];
+        const iceServers = iceRaw.map(s => (typeof s === "string") ? { urls: s } : {
+          urls: s.urls, username: s.username, credential: s.credential
+        });
+
+        pc = buildPeerConnection(iceServers, /*forceRelay=*/false);
+        const remoteDescription = new RTCSessionDescription(sessionInfo.sdp);
+        await pc.setRemoteDescription(remoteDescription);
+        status("Session created. Ready to start.");
+      } catch (err) {
+        console.error(err);
+        status("Error creating session: " + (err?.message || err));
+      }
+    }
+
+    function buildPeerConnection(iceServers, forceRelay) {
+      const peer = new RTCPeerConnection({
+        iceServers,
+        iceTransportPolicy: forceRelay ? "relay" : "all"
+      });
+
+      peer.ontrack = (e) => {
+        // attach first stream
+        if (e.streams && e.streams[0]) {
+          mediaElement.srcObject = e.streams[0];
+          // Safari/iOS: autoplay only if muted + user gesture; we try anyway:
+          mediaElement.play().catch(()=>{ /* will start on button click */ });
+        }
+      };
+
+      peer.onicecandidate = ({ candidate }) => {
+        if (candidate) handleICE(sessionInfo.session_id, candidate.toJSON()).catch(console.error);
+      };
+
+      peer.onicecandidateerror = (e) => {
+        console.warn("ICE candidate error:", e);
+        status("ICE candidate error (some paths blocked) — trying alternatives…");
+      };
+
+      peer.oniceconnectionstatechange = () => {
+        status(`ICE state: ${peer.iceConnectionState}`);
+      };
+
+      peer.onconnectionstatechange = () => {
+        status(`Connection state: ${peer.connectionState}`);
+        if (peer.connectionState === "connected") {
+          if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+          mediaElement.play().catch(()=>{});
+        }
+        if (peer.connectionState === "failed" || peer.connectionState === "disconnected") {
+          // Try relay-only quick restart
+          tryRelayFallback();
+        }
+      };
+      return peer;
+    }
+
+    async function startAndDisplaySession() {
+      if (!sessionInfo || !pc) return status("Create a connection first.");
+      status("Starting session…");
+      try {
+        const localDesc = await pc.createAnswer();
+        await pc.setLocalDescription(localDesc);
+
+        // if se nepřepne do „connected“ do 6s, zkusíme relay-only
+        reconnectTimer = setTimeout(tryRelayFallback, 6000);
+
+        await startSession(sessionInfo.session_id, pc.localDescription);
+        status("Session started.");
+      } catch (err) {
+        console.error(err);
+        status("Error starting session: " + (err?.message || err));
+      }
+    }
+
+    async function tryRelayFallback() {
+      if (!pc || pc.connectionState === "connected") return;
+      status("Relay fallback: rebuilding peer connection with iceTransportPolicy=relay…");
+      try {
+        const iceRaw = sessionInfo.ice_servers || sessionInfo.ice_servers2 || [];
+        const iceServers = iceRaw.map(s => (typeof s === "string") ? { urls: s } : {
+          urls: s.urls, username: s.username, credential: s.credential
+        });
+
+        pc.close();
+        pc = buildPeerConnection(iceServers, /*forceRelay=*/true);
+
+        const remoteDescription = new RTCSessionDescription(sessionInfo.sdp);
+        await pc.setRemoteDescription(remoteDescription);
+        const localDesc = await pc.createAnswer();
+        await pc.setLocalDescription(localDesc);
+        await startSession(sessionInfo.session_id, pc.localDescription);
+        status("Relay fallback active.");
+      } catch (err) {
+        console.error(err);
+        status("Relay fallback failed: " + (err?.message || err));
+      }
+    }
+
+    // ====== CHAT FLOW ======
+    async function sendTextToAvatar(text) {
+      if (!sessionInfo) return status("Create a connection first.");
+      if (!text || !text.trim()) return status("Text is empty.");
+      try {
+        const payload = { session_id: sessionInfo.session_id, text, task_type: "repeat" };
+        console.log("Sending payload:", payload);
+        const resp = await fetch(`${API_CONFIG.serverUrl}/v1/streaming.task`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Api-Key": API_CONFIG.token },
+          body: JSON.stringify(payload)
+        });
+        const data = await safeJson(resp);
+        if (!resp.ok) throw new Error(data?.message || resp.statusText);
+        console.log("Task response:", data);
+        status("Task sent.");
+      } catch (err) {
+        console.error(err);
+        status("Error sending text: " + (err?.message || err));
+      }
+    }
+
+    const generateResponse_async = async (userMessage) => {
+      const li = document.createElement("div");
+      li.className = "chat-li";
+      const p = document.createElement("p");
+      li.appendChild(p);
+      chatLog.appendChild(li);
+
+      const requestOptions = {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "token": jwt_token_const },
+        body: new URLSearchParams({ chatId: chatId_const, message: userMessage })
+      };
+
+      try {
+        const response = await fetch(API_URL, requestOptions);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let received = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          received += decoder.decode(value, { stream: true });
+          p.innerHTML = received.replace(/\n/g, "<br>");
+          chatLog.scrollTop = chatLog.scrollHeight;
+        }
+        await sendTextToAvatar(received);
+      } catch (err) {
+        console.error(err);
+        p.textContent = "Error generating response.";
+      }
+    };
+
+    // UI handlers
+    sendBtn.addEventListener("click", async () => {
+      // user gesture helps autoplay policies
+      mediaElement.play().catch(()=>{});
+      const text = userInput.value.trim();
+      if (text) {
+        await generateResponse_async(text);
+        userInput.value = "";
+      }
+    });
+    userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendBtn.click();
+    });
+
+    // ====== HEYGEN API ======
+    async function newSession(quality, avatar_name, voice_id) {
+      const resp = await fetch(`${API_CONFIG.serverUrl}/v1/streaming.new`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": API_CONFIG.token },
+        body: JSON.stringify({ quality, avatar_name, voice: { voice_id } })
+      });
+      const data = await safeJson(resp);
+      if (!resp.ok) throw new Error(data?.message || resp.statusText);
+      return data.data;
+    }
+
+    async function startSession(session_id, sdp) {
+      const resp = await fetch(`${API_CONFIG.serverUrl}/v1/streaming.start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": API_CONFIG.token },
+        body: JSON.stringify({ session_id, sdp })
+      });
+      const data = await safeJson(resp);
+      if (!resp.ok) throw new Error(data?.message || resp.statusText);
+      return data;
+    }
+
+    async function handleICE(session_id, candidate) {
+      if (!candidate) return; // don't post null candidates
+      const resp = await fetch(`${API_CONFIG.serverUrl}/v1/streaming.ice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": API_CONFIG.token },
+        body: JSON.stringify({ session_id, candidate })
+      });
+      const data = await safeJson(resp);
+      if (!resp.ok) throw new Error(data?.message || resp.statusText);
+      return data;
+    }
+
+    async function safeJson(resp) {
+      try { return await resp.json(); } catch { return null; }
+    }
+
+    // ====== BOOTSTRAP ======
+    window.addEventListener("load", async () => {
+      await createNewSession();
+      await startAndDisplaySession();
+      status("Ready. Type a message and click Send.");
+    });
+
+    window.addEventListener("beforeunload", () => {
+      try { pc && pc.close(); } catch {}
+    });
+  </script>
+</body>
+</html>

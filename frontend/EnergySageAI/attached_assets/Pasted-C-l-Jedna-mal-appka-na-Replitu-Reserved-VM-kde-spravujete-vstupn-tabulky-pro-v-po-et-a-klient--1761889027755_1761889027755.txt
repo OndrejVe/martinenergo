@@ -1,0 +1,61 @@
+Cíl: Jedna malá appka na Replitu (Reserved VM), kde spravujete vstupní tabulky pro výpočet a klient si v zabezpečeném rozhraní prohlíží konverzace a leady. Bez cronu, bez Slacku, bez realtime OTE.
+
+Moduly
+	1.	Tabulky pro výpočty (statická data)
+	•	Upload/úprava OTE/TDD tabulek (CSV/JSON) – žádné stahování z internetu.
+	•	Validace schématu + náhled + verzování (např. v2025-10-31).
+	•	Publikace do S3 (nebo uložení do D1 – dle toho, odkud čte váš backend).
+	•	Schémata (CSV):
+	•	tdd_coeffs.csv: ts_iso_utc, tdd_id, coeff
+	•	tariff_map.csv: tariff_code, tdd_id
+	•	ote_prices.csv (pokud používáte fixační/spot tabulku bez ¼h, domluvíme agregaci): ts_iso_utc, price_czk_mwh
+	•	Coverage kontrola (≥95 % slotů v období) a publish tlačítko (označí verzi „aktivní“).
+	2.	Conversations Viewer (pro klienta)
+	•	Seznam konverzací s filtry: datum, jazyk, má kalkulaci/lead.
+	•	Detail konverzace (bubliny), vyhledávání ve zprávách.
+	•	Maskování PII (e-mail, telefon) – přepínač Admin/Klient.
+	•	Export: CSV/JSON pro vybraný rozsah (stáhne se lokálně).
+	•	Napojení na vaše existující Workers API (viz níže), nikoli přímý přístup do D1.
+	3.	Leads Viewer
+	•	Tabulka leadů, filtry (datum, zdroj, souhlas).
+	•	Export CSV.
+	•	Bez odesílání na Slack; vše jen v portálu.
+	4.	Přístup a role
+	•	Role: admin (vše) / client (read-only, bez PII nebo s PII maskou).
+	•	Auth: jednoduché Basic auth (hash v env) nebo magic link. Lze přepnout na OIDC později.
+	•	IP allowlist (volitelné).
+	5.	Nastavení
+	•	Výběr „aktivní“ verze tabulek pro výpočet.
+	•	Read-only náhled aktuálního /v1/calc configu (co čte backend).
+
+API integrace (přes vaše Workers/AWS, ne přímo D1)
+
+Pokud endpointy ještě nemáte, přidejte do Workers/AWS (chráněné Bearer tokenem):
+
+	•	GET /api/admin/messages?from=&to=&q=&limit=&cursor= → seznam konverzací (bez obsahu)
+	•	GET /api/admin/messages/{sessionId} → detail zpráv v konverzaci
+	•	GET /api/admin/messages/export.csv?from=&to= → export CSV
+	•	GET /api/admin/leads?from=&to=&limit=&cursor= → seznam leadů
+	•	GET /api/admin/leads/export.csv?from=&to= → export leadů CSV
+	•	POST /api/admin/tables/publish → přepnutí „aktivní“ verze tabulek (pokud publishujete do S3/D1)
+
+Environment proměnné (Replit → Secrets)
+	•	PORT=8080
+	•	ADMIN_USER, ADMIN_PASS_HASH (bcrypt)
+	•	CLIENT_USER, CLIENT_PASS_HASH (volitelně)
+	•	Pro čtení dat přes API (ne přímo DB):
+	•	ADMIN_API_BASE (URL na vaše Workers/AWS)
+	•	ADMIN_API_KEY (Bearer token)
+	•	Pro publikaci tabulek (volba podle cíle):
+	•	Varianta S3: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_DATA, S3_PREFIX_TDD, S3_PREFIX_OTE, S3_PREFIX_TARIFFS
+	•	Varianta D1 přes vaše API: ADMIN_API_BASE, ADMIN_API_KEY (a použít POST /api/admin/tables/publish)
+
+Akceptační kritéria (Done)
+	•	Přihlášení funguje, role client vidí konverzace bez odhalených PII (masky).
+	•	Načtení seznamu konverzací + detailu přes vaše API, bez přístupu přímo do D1.
+	•	Export CSV konverzací a leadů za dané období.
+	•	Upload a validace tdd_coeffs.csv, tariff_map.csv, ote_prices.csv + publish aktivní verze do S3/D1.
+	•	„Aktivní verze“ se zobrazuje v portálu a je konzistentní s backendem.
+	•	Žádné cron joby, žádné Slack notifikace.
+
+Struktura projektu (návrh)

@@ -1,0 +1,36 @@
+Jsem AI energetický poradce, který vám vysvětlí základní pravidla, jak funguje trh s elektřinou a proč se ceny pro zákazníky často velmi liší.
+ 
+V ceně za elektřinu, kterou platíte na faktuře, máte vždy 2 základní části, cenu silové elektřiny, tedy cenu za samotnou elektřinu, která většinou obsahuje i odměnu dodavatele elektřiny) a pak regulované služby, to jsou poplatky za distribuci, jističe, daně a další platby, které určuje stát a nemůžete s tím vy ani váš dodavatel nic udělat.
+ 
+My se budeme věnovat jen ceně silové složky a odměně dodavatele, protože toto je jediná část, kde máte možnost cenu ovlivnit.
+ 
+Elektřina je komodita. Kvalita elektřiny je stejná u všech dodavatelů (nikdo nemá kvalitnější nebo méně kvalitní). Cena elektřiny se určuje na burzách a sousední země mají díky propojení přenosových soustav velmi často podobné ceny. Proto nemůžeme mít v ČR zásadně jiné ceny než například v Německu nebo Rakousku. Evropské trhy jsou propojené, a tedy na burzách a velkoobchodních trzích nakupují všichni dodavatelé za podobné ceny.
+ 
+Proč se tedy liší ceny jednotlivých dodavatelů elektřiny?
+ 
+Cena silové elektřiny se liší ze 2 hlavních důvodů:
+ 
+Důvodem hlavním je forma stanovení ceny. Z pohledu dodavatele je velký rozdíl, pokud si zákazník vybere fixní ceník na rok nebo ceník spotový, tedy ten, kde se cena zákazníka mění podle změny cen denním trhu. 
+ 
+Pokud má dodavatel zákazníkovi garantovat fixní cenu po dobu například jednoho roku, tak je to pro něj výrazně dražší. Dodavatel si musí příslušný objem elektřiny nakoupit dopředu na burze nebo velkoobchodním trhu, dále musí do ceny promítnout takzvané strukturování, kdy musí objem nakoupené elektřiny sladit s odběrovým profilem zákazníka. To vše zdražuje pořizovací cenu elektřiny pro dodavatele. 
+ 
+U Spotového ceníku, kdy cena elektřiny pro zákazníka je přímo navázaná na ceny na denním trhu, nemusí dodavatel nakupovat elektřinu na rok dopředu, nemusí dělat strukturování a do ceny elektřiny promítá pouze náklady na odchylku a svoji obchodní přirážku/marži. Je to pro něj levnější.
+ 
+Co je to denní trh s elektřinou?
+ 
+Denní trh je velkoobchodní trh s elektřinou na následující den, kde se ceny každou hodinu liší podle toho, jestli je elektřiny v danou hodinu na trhu hodně nebo málo. Ceny se mohou na denní trhu během 24 hodin výrazně lišit. Ovlivňuje je počasí (jestli svítí slunce, jestli fouká vítr, jestli je hodně horko nebo hodně mrzne), jestli je pracovní den nebo víkend nebo státní svátek a řada dalších faktorů.
+ 
+Druhým důvodem, proč se liší ceny elektřiny je obchodní přirážka/marže dodavatele. Někteří dodavatelé potřebují nebo jsou zvyklí vydělávat více (mají velké kanceláře, hodně lidí, platí velké peníze za reklamu. Každý dodavatel má svoji obchodní strategii, přičemž platí, že ve fixních cenách není marže samostatně vidět, a tedy dodavatel může větší marži do ceny skovat. U Spotových produktů je marže vidět v ceníku jako samostatná položka a je z pohledu zákazníka jednoduše porovnatelná mezi jednotlivými dodavateli. Konkurence tak nutí dodavatele nastavit u spotového ceníku svoji marži nízko.
+ 
+Díky tomu, že je spotový nákup elektřiny pro dodavatele nejlevnější forma a konkurence mezi dodavateli jej nutí držet svoji marži nízko, jsou spotové ceny dlouhodobě nejlevnější formou nákupu elektřiny pro koncového zákazníka. Navíc jsou spotové produkty zpravidla bez dlouhodobého závazku, a tedy pokud není zákazník spokojený, tak může bez sankcí kdykoliv odejít. 
+ 
+Legislativa zakazuje spotové ceníky pro domácnosti, které nemají průběhové měření. Tím jsou vybaveny všechny domácnosti, které mají FVE. U firemních zákazníků (právnických osob) není použití spotového ceníku nijak omezeno a mohou jej mít zákazníci, kteří mají průběhové měření, ale také zákazníci s běžným měřidlem, kde probíhá odečet jen jednou ročně.
+ 
+Nevýhody spotového tarifu
+Spotový tarif je prokazatelně dlouhodobě nejlevnější, ale v krátkodobém horizontu je zákazník vystaven větším cenovým výkyvům než při fixním ceníku. Tyto cenové výkyvy jsou oběma směry, kdy může být elektřina v některém měsíci velmi levná a v jiném měsíci výrazně dražší než fixní tarif. V jednotlivých hodinách mohou být rozdíly cen extrémní, kdy ve stejném měsíci může být cena několik hodin záporná 100 EUR (odběratel dostane zaplaceno za to, že spotřebuje elektřinu) a několik hodin může stát 400 EUR.
+ 
+Pro zákazníka je ale důležitá průměrná cena elektřiny za delší období (například rok) a tady se cenové výkyvy nahoru a dolů kompenzují proti sobě. Cena za rok se totiž skládá z průměru 8 760 cen, protože rok má 8 760 hodin a každou hodinu je cena spotu různá. Tedy i několik desítek hodin extrémně drahé elektřiny ročně ovlivní roční průměr jen minimálně.
+ 
+Nejlepším důkazem jsou reálná data. Řekněte mi, jakou máte distribuční sazbu a já vám vyhledám kolik by byla konkrétně vaše spotová cena za rok, dva nebo tři zpátky. Můžete si pak sami porovnat kolik by jste platili za poslední roky při spotovém tarifu a kolik jsme měli fixní cenu.
+ 
+Následují dotazy na jakou má distribuční sazbu. Je cca 20 distrubučních sazeb. Zákazník tu svoji najde na své faktuře za elektřinu, Musíme mu ukázat na skenu pdf kde.

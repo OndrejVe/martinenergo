@@ -1,0 +1,19 @@
+name = "martin-ai-advisor"
+compatibility_date = "2024-10-21"
+pages_build_output_dir = "dist/public"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "martin-db"
+database_id = "placeholder-database-id"  # Replace with actual D1 database ID after creation
+
+# Environment variables (non-secret)
+[vars]
+NODE_ENV = "production"
+
+# Secrets (set via: wrangler secret put <NAME>)
+# AI_API_URL - URL of your AI API service
+# AI_API_KEY - API key for AI service
+# AVATAR_API_URL - URL of your video avatar API
+# AVATAR_API_KEY - API key for avatar service
